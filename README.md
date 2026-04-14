@@ -248,13 +248,12 @@ pytest
 
 ---
 
+
 ## Example workflows
 
-See the `examples/` folder:
-
-* `vip_report_agent.yaml`
-* `vip_update_collection.yaml`
-* `order_analysis.yaml`
+- [order_analysis.yaml](examples/order_analysis.yaml)
+- [vip_update_collection.yaml](examples/vip_update_collection.yaml)
+- [vip_report_agent.yaml](examples/vip_report_agent.yaml)
 
 ---
 
