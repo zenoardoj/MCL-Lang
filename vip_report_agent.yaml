@@ -1,0 +1,87 @@
+version: "0.1"
+
+agent:
+  name: "vip_report_agent"
+  description: "Legge ordini recenti, produce un report VIP e lo salva"
+
+resources:
+  - id: orders_db
+    type: database
+    uri: "postgres://sales/orders"
+    mode: read
+
+  - id: reports_store
+    type: service
+    uri: "crm://reports"
+    mode: write
+
+tools:
+  - id: find_customer
+    mcp_tool: "find_customer"
+
+policies:
+  retries:
+    max_attempts: 1
+  limits:
+    max_steps: 100
+    max_tool_calls: 20
+
+workflow:
+  - step: load_orders
+    action: read_resource
+    resource: orders_db
+    query:
+      days: 7
+    output: recent_orders
+
+  - step: set_threshold
+    action: assign
+    value: 1000
+    output: vip_threshold
+
+  - step: select_vip_orders
+    action: transform
+    input: recent_orders
+    operation: filter
+    where: "${item['total'] > vip_threshold}"
+    output: vip_orders
+
+  - step: iterate_vip_orders
+    action: for_each
+    items: vip_orders
+    as: order
+    do:
+      - step: load_customer
+        action: tool_call
+        tool: find_customer
+        input:
+          customer_id: "${order['customer_id']}"
+        output: customer
+
+      - step: collect_report_row
+        action: emit
+        target: vip_report
+        value:
+          order_id: "${order['id']}"
+          customer_id: "${customer['id']}"
+          customer_email: "${customer['email']}"
+          total: "${order['total']}"
+
+  - step: write_report
+    action: write_resource
+    resource: reports_store
+    value: "${vip_report}"
+    output: write_result
+
+  - step: count_report_rows
+    action: transform
+    input: vip_report
+    operation: count
+    output: vip_report_count
+
+outputs:
+  format: json
+  include:
+    - vip_report
+    - vip_report_count
+    - write_result
