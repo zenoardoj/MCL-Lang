@@ -255,6 +255,25 @@ pytest
 - [vip_update_collection.yaml](examples/vip_update_collection.yaml)
 - [vip_report_agent.yaml](examples/vip_report_agent.yaml)
 
+## Quick demo
+
+Run the default example:
+
+```bash
+python main.py
+```
+
+Run a specific example:
+
+```bash
+python main.py examples/order_analysis.yaml
+```
+
+Show audit details:
+
+```bash
+python main.py --show-audit --show-calls
+```
 ---
 
 ## Why this matters
