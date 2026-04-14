@@ -1,0 +1,82 @@
+version: "0.1"
+
+agent:
+  name: "vip_update_collection_agent"
+  description: "Aggiorna clienti VIP e raccoglie i risultati"
+
+tools:
+  - id: fetch_recent_orders
+    mcp_tool: "fetch_recent_orders"
+
+  - id: find_customer
+    mcp_tool: "find_customer"
+
+  - id: update_customer_status
+    mcp_tool: "update_customer_status"
+
+policies:
+  retries:
+    max_attempts: 1
+  limits:
+    max_steps: 100
+    max_tool_calls: 50
+
+workflow:
+  - step: load_orders
+    action: tool_call
+    tool: fetch_recent_orders
+    input:
+      days: 7
+    output: recent_orders
+
+  - step: set_vip_threshold
+    action: assign
+    value: 1000
+    output: vip_threshold
+
+  - step: for_each_order
+    action: for_each
+    items: recent_orders
+    as: order
+    do:
+      - step: check_high_value
+        action: condition
+        if: "${order['total'] > vip_threshold}"
+        then:
+          - step: lookup_customer
+            action: tool_call
+            tool: find_customer
+            input:
+              customer_id: "${order['customer_id']}"
+            output: customer
+
+          - step: update_status
+            action: tool_call
+            tool: update_customer_status
+            input:
+              customer_id: "${customer['id']}"
+              status: "vip"
+            output: vip_update_result
+
+          - step: collect_vip_update
+            action: emit
+            target: vip_updates
+            value:
+              order_id: "${order['id']}"
+              customer_id: "${customer['id']}"
+              previous_status: "${customer['status']}"
+              new_status: "${vip_update_result['new_status']}"
+              updated: "${vip_update_result['updated']}"
+        else: []
+
+  - step: count_updates
+    action: transform
+    input: vip_updates
+    operation: count
+    output: vip_update_count
+
+outputs:
+  format: json
+  include:
+    - vip_updates
+    - vip_update_count
