@@ -224,8 +224,8 @@ Still evolving:
 Clone the repository:
 
 ```bash
-git clone <repo-url>
-cd mcl
+git clone https://github.com/zenoardoj/MCL-Lang.git
+cd MCL-Lang
 ```
 
 Install:
