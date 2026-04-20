@@ -1,0 +1,56 @@
+version: "0.1"
+
+agent:
+  name: "order_analysis_agent"
+  description: "Analizza ordini recenti e identifica quelli ad alto valore"
+
+tools:
+  - id: fetch_recent_orders
+    mcp_tool: "fetch_recent_orders"
+
+policies:
+  retries:
+    max_attempts: 1
+  limits:
+    max_steps: 50
+    max_tool_calls: 10
+
+workflow:
+  - step: load_orders
+    action: tool_call
+    tool: fetch_recent_orders
+    input:
+      days: 7
+    output: recent_orders
+
+  - step: set_vip_threshold
+    action: assign
+    value: 1000
+    output: vip_threshold
+
+  - step: select_high_value_orders
+    action: transform
+    input: recent_orders
+    operation: filter
+    where: "${item['total'] > vip_threshold}"
+    output: high_value_orders
+
+  - step: count_high_value_orders
+    action: transform
+    input: high_value_orders
+    operation: count
+    output: high_value_count
+
+  - step: extract_customer_ids
+    action: transform
+    input: high_value_orders
+    operation: map
+    expr: "${item['customer_id']}"
+    output: vip_customer_ids
+
+outputs:
+  format: json
+  include:
+    - high_value_orders
+    - high_value_count
+    - vip_customer_ids
